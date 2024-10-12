@@ -1,0 +1,154 @@
+use macroquad::prelude::*;
+use rayon::prelude::*;
+
+mod hsl;
+use hsl::hsl_to_rgb;
+
+fn force(r: f32, a: f32) -> f32 {
+    let b: f32 = 0.3;
+    if r < b {
+        return r / b - 1.0;
+    } else if b < r && r < 1.0 {
+        return a * (1.0 - ((2.0 * r - 1.0 - b).abs() / (1.0 - b)));
+    }
+    0.0
+}
+
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Particle life".to_owned(),
+        window_width: 1280,
+        window_height: 720,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
+async fn main() {
+    const N: usize = 1500;
+    const COLORS: usize = 4;
+    const RMAX: f32 = 20.0;
+    const FRICTION: f32 = 0.9;
+    const FORCE: f32 = 10.0;
+
+    let mut vel_x = [0.0; N];
+    let mut vel_y = [0.0; N];
+
+    let mut pos_x = [0.0; N];
+    let mut pos_y = [0.0; N];
+
+    let mut p_cols = [0; N];
+
+    let mut col_matrix = [[0.0; COLORS]; COLORS];
+
+    {
+        let w = screen_width();
+        let h = screen_height();
+        for i in 0..N {
+            pos_x[i] = rand::gen_range(0.0, w);
+            pos_y[i] = rand::gen_range(0.0, h);
+            p_cols[i] = rand::gen_range(0, COLORS);
+        }
+
+        for x in 0..COLORS {
+            for y in 0..COLORS {
+                col_matrix[x][y] = rand::gen_range(-1.0, 1.0);
+            }
+        }
+    }
+
+    loop {
+        clear_background(BLACK);
+        let dt = get_frame_time();
+
+        //update velocities
+        let w = screen_width();
+        let h = screen_height();
+
+        let forces: Vec<(f32, f32)> = (0..N)
+            .into_par_iter()
+            .map(|i| {
+                let mut forcex: f32 = 0.0;
+                let mut forcey: f32 = 0.0;
+
+                for j in 0..N {
+                    if i == j {
+                        continue;
+                    }
+
+                    let dx = pos_x[j] - pos_x[i];
+                    let dy = pos_y[j] - pos_y[i];
+
+                    let w_dx = dx - w * (dx / w).round();
+                    let w_dy = dy - h * (dy / h).round();
+
+                    //let r = f32::hypot(w_dx, w_dy);
+                    let r_squared = w_dx * w_dx + w_dy * w_dy;
+                    if r_squared > 0.0 && r_squared < RMAX * RMAX {
+                        let r = r_squared.sqrt();
+                        let a = col_matrix[p_cols[i]][p_cols[j]];
+                        let f = force(r / RMAX, a);
+
+                        forcex += w_dx / r * f;
+                        forcey += w_dy / r * f;
+                    }
+                }
+
+                (forcex * RMAX * FORCE, forcey * RMAX * FORCE)
+            })
+            .collect();
+
+        //update positions
+
+        //for i in 0..N {
+        //    pos_x[i] += vel_x[i] * dt;
+        //    pos_y[i] += vel_y[i] * dt;
+        //}
+
+        for i in 0..N {
+            vel_x[i] *= FRICTION;
+            vel_y[i] *= FRICTION;
+
+            vel_x[i] += forces[i].0 * dt;
+            vel_y[i] += forces[i].1 * dt;
+
+            pos_x[i] += vel_x[i] * dt;
+            pos_y[i] += vel_y[i] * dt;
+
+            // Wrap around horizontally
+            if pos_x[i] < 0.0 {
+                pos_x[i] += screen_width(); // Wrap to the right
+            } else if pos_x[i] > screen_width() {
+                pos_x[i] -= screen_width(); // Wrap to the left
+            }
+
+            // Wrap around vertically
+            if pos_y[i] < 0.0 {
+                pos_y[i] += screen_height(); // Wrap to the bottom
+            } else if pos_y[i] > screen_height() {
+                pos_y[i] -= screen_height(); // Wrap to the top
+            }
+        }
+
+        //render
+        for i in 0..N {
+            let c = p_cols[i];
+            let hue = (c as f32 / COLORS as f32) * 360.0;
+            let rgb = hsl_to_rgb(hue, 1.0, 0.5);
+            let color = Color::new(rgb.0, rgb.1, rgb.2, 1.0);
+
+            let (x, y) = (pos_x[i], pos_y[i]);
+            draw_circle(x, y, 2.0, color);
+        }
+
+        if is_key_released(KeyCode::N) {
+            for x in 0..COLORS {
+                for y in 0..COLORS {
+                    col_matrix[x][y] = rand::gen_range(-1.0, 1.0);
+                }
+            }
+        }
+
+        next_frame().await
+    }
+}
