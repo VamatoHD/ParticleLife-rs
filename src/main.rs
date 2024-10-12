@@ -38,8 +38,8 @@ async fn main() {
     let mut pos_y = [0.0; N];
 
     let mut p_cols = [0; N];
-
     let mut col_matrix = [[0.0; COLORS]; COLORS];
+    let mut computed_colors: Vec<Color> = Vec::new();
 
     {
         let w = screen_width();
@@ -54,6 +54,11 @@ async fn main() {
             for y in 0..COLORS {
                 col_matrix[x][y] = rand::gen_range(-1.0, 1.0);
             }
+
+            let hue = (x as f32 / COLORS as f32) * 360.0;
+            let rgb = hsl_to_rgb(hue, 1.0, 0.5);
+            let color = Color::new(rgb.0, rgb.1, rgb.2, 1.0);
+            computed_colors.push(color);
         }
     }
 
@@ -98,13 +103,6 @@ async fn main() {
             })
             .collect();
 
-        //update positions
-
-        //for i in 0..N {
-        //    pos_x[i] += vel_x[i] * dt;
-        //    pos_y[i] += vel_y[i] * dt;
-        //}
-
         for i in 0..N {
             vel_x[i] *= FRICTION;
             vel_y[i] *= FRICTION;
@@ -132,13 +130,9 @@ async fn main() {
 
         //render
         for i in 0..N {
-            let c = p_cols[i];
-            let hue = (c as f32 / COLORS as f32) * 360.0;
-            let rgb = hsl_to_rgb(hue, 1.0, 0.5);
-            let color = Color::new(rgb.0, rgb.1, rgb.2, 1.0);
-
             let (x, y) = (pos_x[i], pos_y[i]);
-            draw_circle(x, y, 2.0, color);
+            let c = p_cols[i];
+            draw_circle(x, y, 2.0, computed_colors[c]);
         }
 
         if is_key_released(KeyCode::N) {
