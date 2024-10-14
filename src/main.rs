@@ -4,8 +4,11 @@ use rayon::prelude::*;
 mod hsl;
 use hsl::hsl_to_rgb;
 
+mod grid;
+use grid::Grid;
+
 fn force(r: f32, a: f32) -> f32 {
-    let b: f32 = 0.3;
+    let b: f32 = 0.2;
     if r < b {
         return r / b - 1.0;
     } else if b < r && r < 1.0 {
@@ -26,10 +29,10 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     const N: usize = 1500;
-    const COLORS: usize = 4;
-    const RMAX: f32 = 20.0;
-    const FRICTION: f32 = 0.9;
-    const FORCE: f32 = 10.0;
+    const COLORS: usize = 10;
+    const RMAX: f32 = 80.0;
+    const FRICTION: f32 = 0.8;
+    const FORCE: f32 = 1.0;
 
     let mut vel_x = [0.0; N];
     let mut vel_y = [0.0; N];
@@ -70,13 +73,19 @@ async fn main() {
         let w = screen_width();
         let h = screen_height();
 
+        let mut grid = Grid::new(RMAX, w, h);
+
+        for (i, (x, y)) in pos_x.iter().zip(pos_y.iter()).enumerate() {
+            grid.insert(i, *x, *y);
+        }
+
         let forces: Vec<(f32, f32)> = (0..N)
             .into_par_iter()
             .map(|i| {
                 let mut forcex: f32 = 0.0;
                 let mut forcey: f32 = 0.0;
 
-                for j in 0..N {
+                for j in grid.query(pos_x[i], pos_y[i]) {
                     if i == j {
                         continue;
                     }
@@ -116,14 +125,14 @@ async fn main() {
             // Wrap around horizontally
             if pos_x[i] < 0.0 {
                 pos_x[i] += screen_width(); // Wrap to the right
-            } else if pos_x[i] > screen_width() {
+            } else if pos_x[i] >= screen_width() {
                 pos_x[i] -= screen_width(); // Wrap to the left
             }
 
             // Wrap around vertically
             if pos_y[i] < 0.0 {
                 pos_y[i] += screen_height(); // Wrap to the bottom
-            } else if pos_y[i] > screen_height() {
+            } else if pos_y[i] >= screen_height() {
                 pos_y[i] -= screen_height(); // Wrap to the top
             }
         }
@@ -132,7 +141,7 @@ async fn main() {
         for i in 0..N {
             let (x, y) = (pos_x[i], pos_y[i]);
             let c = p_cols[i];
-            draw_circle(x, y, 2.0, computed_colors[c]);
+            draw_circle(x, y, 3.0, computed_colors[c]);
         }
 
         if is_key_released(KeyCode::N) {
