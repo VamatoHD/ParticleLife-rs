@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+use ::rand::{rngs::StdRng, Rng, SeedableRng};
 use macroquad::prelude::*;
 use rayon::prelude::*;
 
@@ -44,18 +46,21 @@ async fn main() {
     let mut col_matrix = [[0.0; COLORS]; COLORS];
     let mut computed_colors: Vec<Color> = Vec::new();
 
+    let current_time = SystemTime::now().duration_since(UNIX_EPOCH).expect("").as_secs();
+    let mut r = StdRng::seed_from_u64(current_time);
+
     {
         let w = screen_width();
         let h = screen_height();
         for i in 0..N {
-            pos_x[i] = rand::gen_range(0.0, w);
-            pos_y[i] = rand::gen_range(0.0, h);
-            p_cols[i] = rand::gen_range(0, COLORS);
+            pos_x[i] = r.gen_range(0.0..w);
+            pos_y[i] = r.gen_range(0.0..h);
+            p_cols[i] = r.gen_range(0..COLORS);
         }
 
         for x in 0..COLORS {
             for y in 0..COLORS {
-                col_matrix[x][y] = rand::gen_range(-1.0, 1.0);
+                col_matrix[x][y] = r.gen_range(-1.0..1.0);
             }
 
             let hue = (x as f32 / COLORS as f32) * 360.0;
@@ -124,16 +129,16 @@ async fn main() {
 
             // Wrap around horizontally
             if pos_x[i] < 0.0 {
-                pos_x[i] += screen_width(); // Wrap to the right
-            } else if pos_x[i] >= screen_width() {
-                pos_x[i] -= screen_width(); // Wrap to the left
+                pos_x[i] += w; // Wrap to the right
+            } else if pos_x[i] >= w {
+                pos_x[i] -= w; // Wrap to the left
             }
 
             // Wrap around vertically
             if pos_y[i] < 0.0 {
-                pos_y[i] += screen_height(); // Wrap to the bottom
-            } else if pos_y[i] >= screen_height() {
-                pos_y[i] -= screen_height(); // Wrap to the top
+                pos_y[i] += h; // Wrap to the bottom
+            } else if pos_y[i] >= h {
+                pos_y[i] -= h; // Wrap to the top
             }
         }
 
@@ -144,10 +149,19 @@ async fn main() {
             draw_circle(x, y, 3.0, computed_colors[c]);
         }
 
+        //show how much time it took to render
+        draw_text(
+            &format!("Frame time: {:.2} ms", dt * 1000.0),
+            10.0,
+            20.0,
+            30.0,
+            WHITE,
+        );
+
         if is_key_released(KeyCode::N) {
             for x in 0..COLORS {
                 for y in 0..COLORS {
-                    col_matrix[x][y] = rand::gen_range(-1.0, 1.0);
+                    col_matrix[x][y] = r.gen_range(-1.0..1.0);
                 }
             }
         }
