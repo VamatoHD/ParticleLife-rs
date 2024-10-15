@@ -1,10 +1,10 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 use ::rand::{rngs::StdRng, Rng, SeedableRng};
 use macroquad::prelude::*;
 use rayon::prelude::*;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 mod hsl;
-use hsl::hsl_to_rgb;
+use hsl::hue_to_rgb;
 
 mod grid;
 use grid::Grid;
@@ -46,8 +46,13 @@ async fn main() {
     let mut col_matrix = [[0.0; COLORS]; COLORS];
     let mut computed_colors: Vec<Color> = Vec::new();
 
-    let current_time = SystemTime::now().duration_since(UNIX_EPOCH).expect("").as_secs();
+    let current_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("")
+        .as_secs();
     let mut r = StdRng::seed_from_u64(current_time);
+
+    let mut is_debug = false;
 
     {
         let w = screen_width();
@@ -64,7 +69,7 @@ async fn main() {
             }
 
             let hue = (x as f32 / COLORS as f32) * 360.0;
-            let rgb = hsl_to_rgb(hue, 1.0, 0.5);
+            let rgb = hue_to_rgb(hue);
             let color = Color::new(rgb.0, rgb.1, rgb.2, 1.0);
             computed_colors.push(color);
         }
@@ -150,13 +155,17 @@ async fn main() {
         }
 
         //show how much time it took to render
-        draw_text(
-            &format!("Frame time: {:.2} ms", dt * 1000.0),
-            10.0,
-            20.0,
-            30.0,
-            WHITE,
-        );
+        if is_debug {
+            draw_text(
+                &format!("Frame time: {:.2} ms\n", dt * 1000.0),
+                10.0,
+                20.0,
+                30.0,
+                WHITE,
+            );
+
+            draw_text(&format!("Fps: {:.0}", get_fps()), 10.0, 50.0, 30.0, WHITE);
+        };
 
         if is_key_released(KeyCode::N) {
             for x in 0..COLORS {
@@ -164,6 +173,9 @@ async fn main() {
                     col_matrix[x][y] = r.gen_range(-1.0..1.0);
                 }
             }
+        }
+        if is_key_released(KeyCode::M) {
+            is_debug = !is_debug;
         }
 
         next_frame().await
