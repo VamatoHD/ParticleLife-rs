@@ -35,6 +35,7 @@ async fn main() {
     const RMAX: f32 = 80.0;
     const FRICTION: f32 = 0.8;
     const FORCE: f32 = 1.0;
+    const TIME_STEP: f32 = 0.04;
 
     let mut vel_x = [0.0; N];
     let mut vel_y = [0.0; N];
@@ -77,7 +78,6 @@ async fn main() {
 
     loop {
         clear_background(BLACK);
-        let dt = get_frame_time();
 
         //update velocities
         let w = screen_width();
@@ -126,11 +126,11 @@ async fn main() {
             vel_x[i] *= FRICTION;
             vel_y[i] *= FRICTION;
 
-            vel_x[i] += forces[i].0 * dt;
-            vel_y[i] += forces[i].1 * dt;
+            vel_x[i] += forces[i].0 * TIME_STEP;
+            vel_y[i] += forces[i].1 * TIME_STEP;
 
-            pos_x[i] += vel_x[i] * dt;
-            pos_y[i] += vel_y[i] * dt;
+            pos_x[i] += vel_x[i] * TIME_STEP;
+            pos_y[i] += vel_y[i] * TIME_STEP;
 
             // Wrap around horizontally
             if pos_x[i] < 0.0 {
@@ -155,6 +155,7 @@ async fn main() {
         }
 
         //show how much time it took to render
+        let dt = get_frame_time();
         if is_debug {
             draw_text(
                 &format!("Frame time: {:.2} ms\n", dt * 1000.0),
@@ -164,7 +165,7 @@ async fn main() {
                 WHITE,
             );
 
-            draw_text(&format!("Fps: {:.0}", get_fps()), 10.0, 50.0, 30.0, WHITE);
+            draw_text(&format!("Fps: {:.0}", 1.0 / dt), 10.0, 50.0, 30.0, WHITE);
         };
 
         if is_key_released(KeyCode::N) {
