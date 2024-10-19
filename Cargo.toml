@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-macroquad = "0.4.13"
+miniquad = "0.4.6"
 rand = "0.8.5"
 rayon = "1.10.0"
 
