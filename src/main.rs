@@ -1,7 +1,6 @@
-use ::rand::{rngs::StdRng, Rng, SeedableRng};
+use fastrand;
 use macroquad::prelude::*;
 use rayon::prelude::*;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 mod hsl;
 use hsl::hue_to_rgb;
@@ -31,7 +30,7 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     const N: usize = 1500;
-    const COLORS: usize = 10;
+    const COLORS: usize = 5;
     const RMAX: f32 = 80.0;
     const FRICTION: f32 = 0.8;
     const FORCE: f32 = 1.0;
@@ -47,26 +46,20 @@ async fn main() {
     let mut col_matrix = [[0.0; COLORS]; COLORS];
     let mut computed_colors: Vec<Color> = Vec::new();
 
-    let current_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("")
-        .as_secs();
-    let mut r = StdRng::seed_from_u64(current_time);
-
     let mut is_debug = false;
 
     {
         let w = screen_width();
         let h = screen_height();
         for i in 0..N {
-            pos_x[i] = r.gen_range(0.0..w);
-            pos_y[i] = r.gen_range(0.0..h);
-            p_cols[i] = r.gen_range(0..COLORS);
+            pos_x[i] = fastrand::f32()*w;
+            pos_y[i] = fastrand::f32()*h;
+            p_cols[i] = fastrand::usize(0..COLORS);
         }
 
         for x in 0..COLORS {
             for y in 0..COLORS {
-                col_matrix[x][y] = r.gen_range(-1.0..1.0);
+                col_matrix[x][y] = fastrand::f32()*2.0-1.0;
             }
 
             let hue = (x as f32 / COLORS as f32) * 360.0;
@@ -171,7 +164,7 @@ async fn main() {
         if is_key_released(KeyCode::N) {
             for x in 0..COLORS {
                 for y in 0..COLORS {
-                    col_matrix[x][y] = r.gen_range(-1.0..1.0);
+                    col_matrix[x][y] = fastrand::f32()*2.0-1.0;
                 }
             }
         }
