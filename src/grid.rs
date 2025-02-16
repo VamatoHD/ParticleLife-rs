@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 pub struct Grid {
-    cell_size: f32,
+    pub cell_size: f32,
     cells: HashMap<(i32, i32), Vec<usize>>,
-    width: f32,
-    height: f32,
+    pub cols: i32,
+    pub rows: i32,
 }
 
 impl Grid {
@@ -12,15 +12,15 @@ impl Grid {
         Grid {
             cell_size,
             cells: HashMap::new(),
-            width,
-            height,
+            cols: (width / cell_size).floor() as i32,
+            rows: (height / cell_size).floor() as i32,
         }
     }
 
     pub fn hash(&self, x: f32, y: f32) -> (i32, i32) {
         let cell_x = (x / self.cell_size).floor() as i32;
         let cell_y = (y / self.cell_size).floor() as i32;
-        (cell_x, cell_y)
+        (cell_x.rem_euclid(self.cols), cell_y.rem_euclid(self.rows))
     }
 
     pub fn insert(&mut self, i: usize, x: f32, y: f32) {
@@ -35,8 +35,8 @@ impl Grid {
         for dx in -1..=1 {
             for dy in -1..=1 {
                 let key = (
-                    (cx + dx).rem_euclid((self.width / self.cell_size) as i32),
-                    (cy + dy).rem_euclid((self.height / self.cell_size) as i32),
+                    (cx + dx).rem_euclid(self.cols),
+                    (cy + dy).rem_euclid(self.rows),
                 );
 
                 if let Some(points) = self.cells.get(&key) {

@@ -10,12 +10,13 @@ use grid::Grid;
 
 fn force(r: f32, a: f32) -> f32 {
     let b: f32 = 0.2;
-    if r < b {
-        return r / b - 1.0;
-    } else if b < r && r < 1.0 {
-        return a * (1.0 - ((2.0 * r - 1.0 - b).abs() / (1.0 - b)));
+    if r <= b {
+        r / b - 1.0
+    } else if r < 1.0 {
+        a * (1.0 - ((2.0 * r - 1.0 - b).abs() / (1.0 - b)))
+    } else {
+        0.0
     }
-    0.0
 }
 
 fn window_conf() -> Conf {
@@ -52,14 +53,14 @@ async fn main() {
         let w = screen_width();
         let h = screen_height();
         for i in 0..N {
-            pos_x[i] = fastrand::f32()*w;
-            pos_y[i] = fastrand::f32()*h;
+            pos_x[i] = fastrand::f32() * w;
+            pos_y[i] = fastrand::f32() * h;
             p_cols[i] = fastrand::usize(0..COLORS);
         }
 
         for x in 0..COLORS {
             for y in 0..COLORS {
-                col_matrix[x][y] = fastrand::f32()*2.0-1.0;
+                col_matrix[x][y] = fastrand::f32() * 2.0 - 1.0;
             }
 
             let hue = (x as f32 / COLORS as f32) * 360.0;
@@ -72,11 +73,10 @@ async fn main() {
     loop {
         clear_background(BLACK);
 
-        //update velocities
-        let w = screen_width();
-        let h = screen_height();
+        let mut grid = Grid::new(RMAX, screen_width(), screen_height());
 
-        let mut grid = Grid::new(RMAX, w, h);
+        let grid_w = grid.cols as f32 * grid.cell_size;
+        let grid_h = grid.rows as f32 * grid.cell_size;
 
         for (i, (x, y)) in pos_x.iter().zip(pos_y.iter()).enumerate() {
             grid.insert(i, *x, *y);
@@ -96,8 +96,8 @@ async fn main() {
                     let dx = pos_x[j] - pos_x[i];
                     let dy = pos_y[j] - pos_y[i];
 
-                    let w_dx = dx - w * (dx / w).round();
-                    let w_dy = dy - h * (dy / h).round();
+                    let w_dx = dx - grid_w * (dx / grid_w).round();
+                    let w_dy = dy - grid_h * (dy / grid_h).round();
 
                     //let r = f32::hypot(w_dx, w_dy);
                     let r_squared = w_dx * w_dx + w_dy * w_dy;
@@ -125,19 +125,8 @@ async fn main() {
             pos_x[i] += vel_x[i] * TIME_STEP;
             pos_y[i] += vel_y[i] * TIME_STEP;
 
-            // Wrap around horizontally
-            if pos_x[i] < 0.0 {
-                pos_x[i] += w; // Wrap to the right
-            } else if pos_x[i] >= w {
-                pos_x[i] -= w; // Wrap to the left
-            }
-
-            // Wrap around vertically
-            if pos_y[i] < 0.0 {
-                pos_y[i] += h; // Wrap to the bottom
-            } else if pos_y[i] >= h {
-                pos_y[i] -= h; // Wrap to the top
-            }
+            pos_x[i] = pos_x[i].rem_euclid(grid_w);
+            pos_y[i] = pos_y[i].rem_euclid(grid_h);
         }
 
         //render
@@ -164,10 +153,11 @@ async fn main() {
         if is_key_released(KeyCode::N) {
             for x in 0..COLORS {
                 for y in 0..COLORS {
-                    col_matrix[x][y] = fastrand::f32()*2.0-1.0;
+                    col_matrix[x][y] = fastrand::f32() * 2.0 - 1.0;
                 }
             }
         }
+
         if is_key_released(KeyCode::M) {
             is_debug = !is_debug;
         }
