@@ -12,8 +12,8 @@ impl Grid {
         Grid {
             cell_size,
             cells: HashMap::new(),
-            cols: (width / cell_size).floor() as i32,
-            rows: (height / cell_size).floor() as i32,
+            cols: ((width / cell_size) as i32).max(1),
+            rows: ((height / cell_size) as i32).max(1),
         }
     }
 

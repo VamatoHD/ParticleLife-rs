@@ -8,15 +8,36 @@ use hsl::hue_to_rgb;
 mod grid;
 use grid::Grid;
 
-fn force(r: f32, a: f32) -> f32 {
-    let b: f32 = 0.2;
-    if r <= b {
-        r / b - 1.0
-    } else if r < 1.0 {
-        a * (1.0 - ((2.0 * r - 1.0 - b).abs() / (1.0 - b)))
+//Constants
+const N: usize = 1500;
+const COLORS: usize = 5;
+const FRICTION: f32 = 0.8;
+const FORCE: f32 = 2.0;
+const TIME_STEP: f32 = 1.0 / 45.0;
+
+const INFLUENCE_RADIUS: f32 = 80.0;
+const RADIUS: f32 = 3.0;
+
+//Rest of the code
+fn force(dist: f32, a: f32) -> f32 {
+    const A_MIN: f32 = 5.0;
+    const RNORMAL: f32 = 3.0 * RADIUS / INFLUENCE_RADIUS;
+
+    if dist <= RNORMAL {
+        A_MIN / RNORMAL * dist - A_MIN
+    } else if dist < 1.0 {
+        let up = (1.0 + RNORMAL - 2.0 * dist).abs();
+        let down = RNORMAL - 1.0;
+
+        (up / down + 1.0) * a
     } else {
         0.0
     }
+}
+
+#[inline]
+fn rnd(start: f32, end: f32) -> f32 {
+    fastrand::f32() * (end - start) + start
 }
 
 fn window_conf() -> Conf {
@@ -30,13 +51,6 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    const N: usize = 1500;
-    const COLORS: usize = 5;
-    const RMAX: f32 = 80.0;
-    const FRICTION: f32 = 0.8;
-    const FORCE: f32 = 1.0;
-    const TIME_STEP: f32 = 0.04;
-
     let mut vel_x = [0.0; N];
     let mut vel_y = [0.0; N];
 
@@ -53,14 +67,14 @@ async fn main() {
         let w = screen_width();
         let h = screen_height();
         for i in 0..N {
-            pos_x[i] = fastrand::f32() * w;
-            pos_y[i] = fastrand::f32() * h;
+            pos_x[i] = rnd(0.0, w);
+            pos_y[i] = rnd(0.0, h);
             p_cols[i] = fastrand::usize(0..COLORS);
         }
 
         for x in 0..COLORS {
             for y in 0..COLORS {
-                col_matrix[x][y] = fastrand::f32() * 2.0 - 1.0;
+                col_matrix[x][y] = rnd(-1.0, 1.0);
             }
 
             let hue = (x as f32 / COLORS as f32) * 360.0;
@@ -73,7 +87,7 @@ async fn main() {
     loop {
         clear_background(BLACK);
 
-        let mut grid = Grid::new(RMAX, screen_width(), screen_height());
+        let mut grid = Grid::new(INFLUENCE_RADIUS, screen_width(), screen_height());
 
         let grid_w = grid.cols as f32 * grid.cell_size;
         let grid_h = grid.rows as f32 * grid.cell_size;
@@ -99,19 +113,21 @@ async fn main() {
                     let w_dx = dx - grid_w * (dx / grid_w).round();
                     let w_dy = dy - grid_h * (dy / grid_h).round();
 
-                    //let r = f32::hypot(w_dx, w_dy);
                     let r_squared = w_dx * w_dx + w_dy * w_dy;
-                    if r_squared > 0.0 && r_squared < RMAX * RMAX {
+                    if r_squared > 0.0 && r_squared < INFLUENCE_RADIUS * INFLUENCE_RADIUS {
                         let r = r_squared.sqrt();
                         let a = col_matrix[p_cols[i]][p_cols[j]];
-                        let f = force(r / RMAX, a);
+                        let f = force(r / INFLUENCE_RADIUS, a);
 
                         forcex += w_dx / r * f;
                         forcey += w_dy / r * f;
                     }
                 }
 
-                (forcex * RMAX * FORCE, forcey * RMAX * FORCE)
+                (
+                    forcex * INFLUENCE_RADIUS * FORCE,
+                    forcey * INFLUENCE_RADIUS * FORCE,
+                )
             })
             .collect();
 
@@ -133,7 +149,7 @@ async fn main() {
         for i in 0..N {
             let (x, y) = (pos_x[i], pos_y[i]);
             let c = p_cols[i];
-            draw_circle(x, y, 3.0, computed_colors[c]);
+            draw_circle(x, y, RADIUS, computed_colors[c]);
         }
 
         //show how much time it took to render
@@ -153,7 +169,7 @@ async fn main() {
         if is_key_released(KeyCode::N) {
             for x in 0..COLORS {
                 for y in 0..COLORS {
-                    col_matrix[x][y] = fastrand::f32() * 2.0 - 1.0;
+                    col_matrix[x][y] = rnd(-1.0, 1.0);
                 }
             }
         }
